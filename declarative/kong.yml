@@ -1,0 +1,22 @@
+ _format_version: "1.1"
+ _transform: true
+
+ services:
+ - host: httpd_website
+   name: httpd_service
+   port: 80
+   protocol: http
+   routes:
+   - name: httpd_website_route
+     paths:
+     - /httpd
+     strip_path: true
+ - host: nginx_website
+   name: nginx_service
+   port: 80
+   protocol: http
+   routes:
+   - name: nginx_website_route
+     paths:
+     - /nginx
+     strip_path: true
