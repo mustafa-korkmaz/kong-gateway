@@ -5,17 +5,44 @@ services:
     image: httpd
     expose:
       - 80
-
   nginx_website:
     container_name: nginx_website
     restart: unless-stopped
     image: nginx:alpine
     expose:
       - 80
-
-  kong_gateway:
-    container_name: kong_gateway
+  api_gateway_db:
+    container_name: api_gateway_db
     restart: unless-stopped
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=api_gateway_pass
+      - POSTGRES_USER=api_gateway_user
+      - POSTGRES_DB=kong
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - api_gateway_db:/var/lib/postgresql
+  api_gateway_db_migration:
+    container_name: api_gateway_db_migration
+    image: kong/kong-gateway:2.8.1.4-alpine
+    command: [ "kong", "migrations", "bootstrap" ]
+    depends_on:
+      api_gateway_db:
+        condition: service_healthy
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=api_gateway_db
+      - KONG_PG_PASSWORD=api_gateway_pass
+      - KONG_PG_USER=api_gateway_user
+  api_gateway:
+    container_name: api_gateway
+    restart: unless-stopped
+    depends_on:
+      - api_gateway_db_migration
     image: kong/kong-gateway:2.8.1.4-alpine
     ports:
       - "8000:8000"
@@ -27,8 +54,11 @@ services:
       - "8003:8003"
       - "8004:8004"
     environment:
-      - KONG_DATABASE=off
-      - KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=api_gateway_db
+      - KONG_PG_USER=api_gateway_user
+      - KONG_PG_PASSWORD=api_gateway_pass
+      - KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml # useless in with-a-db mode
       - KONG_PROXY_ACCESS_LOG=/dev/stdout
       - KONG_ADMIN_ACCESS_LOG=/dev/stdout
       - KONG_PROXY_ERROR_LOG=/dev/stderr
@@ -39,6 +69,8 @@ services:
     volumes:
       - ./declarative:/kong/declarative
 
+volumes:
+  api_gateway_db: null
 networks:
   default:
     external:
