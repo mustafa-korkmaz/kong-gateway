@@ -11,13 +11,13 @@ services:
     image: nginx:alpine
     expose:
       - 80
-  api_gateway_db:
-    container_name: api_gateway_db
+  kong_db:
+    container_name: kong_db
     restart: unless-stopped
     image: postgres
     environment:
-      - POSTGRES_PASSWORD=api_gateway_pass
-      - POSTGRES_USER=api_gateway_user
+      - POSTGRES_PASSWORD=kong_pass
+      - POSTGRES_USER=kong_user
       - POSTGRES_DB=kong
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready" ]
@@ -25,24 +25,25 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - api_gateway_db:/var/lib/postgresql
-  api_gateway_db_migration:
-    container_name: api_gateway_db_migration
+      - kong_db:/var/lib/postgresql
+  kong_db_migration:
+    container_name: kong_db_migration
     image: kong/kong-gateway:2.8.1.4-alpine
     command: [ "kong", "migrations", "bootstrap" ]
     depends_on:
-      api_gateway_db:
+      kong_db:
         condition: service_healthy
     environment:
       - KONG_DATABASE=postgres
-      - KONG_PG_HOST=api_gateway_db
-      - KONG_PG_PASSWORD=api_gateway_pass
-      - KONG_PG_USER=api_gateway_user
-  api_gateway:
-    container_name: api_gateway
+      - KONG_PG_HOST=kong_db
+      - KONG_PG_PASSWORD=kong_pass
+      - KONG_PG_USER=kong_user
+  kong:
+    container_name: kong
     restart: unless-stopped
     depends_on:
-      - api_gateway_db_migration
+      kong_db_migration:
+        condition: service_completed_successfully
     image: kong/kong-gateway:2.8.1.4-alpine
     ports:
       - "8000:8000"
@@ -55,10 +56,9 @@ services:
       - "8004:8004"
     environment:
       - KONG_DATABASE=postgres
-      - KONG_PG_HOST=api_gateway_db
-      - KONG_PG_USER=api_gateway_user
-      - KONG_PG_PASSWORD=api_gateway_pass
-      - KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml # useless in with-a-db mode
+      - KONG_PG_HOST=kong_db
+      - KONG_PG_USER=kong_user
+      - KONG_PG_PASSWORD=kong_pass
       - KONG_PROXY_ACCESS_LOG=/dev/stdout
       - KONG_ADMIN_ACCESS_LOG=/dev/stdout
       - KONG_PROXY_ERROR_LOG=/dev/stderr
@@ -66,11 +66,22 @@ services:
       - KONG_ADMIN_LISTEN=0.0.0.0:8001
       - KONG_PORTAL=on
       - KONG_ADMIN_GUI_URL=http://localhost:8002
+    healthcheck:
+      test: [ "CMD", "kong", "health" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+  deck:
+    container_name: deck
+    image: kong/deck
+    depends_on:
+      kong:
+        condition: service_healthy
+    command: "sync -s ./declarative/kong.yml --kong-addr http://kong:8001"
     volumes:
-      - ./declarative:/kong/declarative
-
+      - ./declarative:/declarative
 volumes:
-  api_gateway_db: null
+  kong_db: null
 networks:
   default:
     external:
