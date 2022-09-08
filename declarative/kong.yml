@@ -12,32 +12,6 @@ services:
      strip_path: true
  - host: nginx_website
    name: nginx_website_service
-   plugins:
-   - config:
-      accept_http_if_already_terminated: false
-      anonymous: null
-      auth_header_name: authorization
-      enable_authorization_code: false
-      enable_client_credentials: true
-      enable_implicit_grant: false
-      enable_password_grant: false
-      global_credentials: false
-      hide_credentials: false
-      mandatory_scope: false
-      persistent_refresh_token: false
-      pkce: lax
-      provision_key: KlfOq3ZFIJLP9mVscVTWEfbapGTMgnAI
-      refresh_token_ttl: 1209600
-      reuse_refresh_token: false
-      scopes: null
-      token_expiration: 7200
-     enabled: true
-     name: oauth2
-     protocols:
-      - http
-      - https
-     tags:
-      - oauth2
    port: 80
    protocol: http
    routes:
