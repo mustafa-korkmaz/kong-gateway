@@ -1,5 +1,15 @@
 _format_version: "1.1"
-
+consumers:
+- keyauth_credentials:
+  - key: oauthapikey
+  oauth2_credentials:
+  - client_id: demo_client
+    client_secret: demo_secret
+    hash_secret: false
+    name: demo
+    redirect_uris:
+    - http://mockbin.org/
+  username: nginx_user
 services:
  - host: httpd_website
    name: httpd_website_service
